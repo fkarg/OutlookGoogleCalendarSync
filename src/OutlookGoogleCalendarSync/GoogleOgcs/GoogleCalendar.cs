@@ -134,8 +134,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                                     log.Error("API limit backoff was not successful. Retrieve calendar list failed.");
                                     throw;
                                 } else {
-                                    log.Warn("API rate limit reached. Backing off " + backoff + "sec before retry.");
-                                    System.Threading.Thread.Sleep(backoff * 1000);
+                                    int backoffDelay = (int)Math.Pow(2, backoff);
+                                    log.Warn("API rate limit reached. Backing off " + backoffDelay + "sec before retry.");
+                                    System.Threading.Thread.Sleep(backoffDelay * 1000);
                                 }
                                 break;
                         }
@@ -188,8 +189,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                                         log.Error("API limit backoff was not successful. Paginated retrieve failed.");
                                         throw;
                                     } else {
-                                        log.Warn("API rate limit reached. Backing off " + backoff + "sec before retry.");
-                                        System.Threading.Thread.Sleep(backoff * 1000);
+                                        int backoffDelay = (int)Math.Pow(2, backoff);
+                                        log.Warn("API rate limit reached. Backing off " + backoffDelay + "sec before retry.");
+                                        System.Threading.Thread.Sleep(backoffDelay * 1000);
                                     }
                                     break;
                             }
@@ -242,8 +244,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                                     log.Error("API limit backoff was not successful. Retrieve failed.");
                                     throw;
                                 } else {
-                                    log.Warn("API rate limit reached. Backing off " + backoff + "sec before retry.");
-                                    System.Threading.Thread.Sleep(backoff * 1000);
+                                    int backoffDelay = (int)Math.Pow(2, backoff);
+                                    log.Warn("API rate limit reached. Backing off " + backoffDelay + "sec before retry.");
+                                    System.Threading.Thread.Sleep(backoffDelay * 1000);
                                 }
                                 break;
                         }
@@ -305,8 +308,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                                     log.Error("API limit backoff was not successful. Retrieve failed.");
                                     throw;
                                 } else {
-                                    log.Warn("API rate limit reached. Backing off " + backoff + "sec before retry.");
-                                    System.Threading.Thread.Sleep(backoff * 1000);
+                                    int backoffDelay = (int)Math.Pow(2, backoff);
+                                    log.Warn("API rate limit reached. Backing off " + backoffDelay + "sec before retry.");
+                                    System.Threading.Thread.Sleep(backoffDelay * 1000);
                                 }
                                 break;
                         }
@@ -333,6 +337,23 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             if (endsOnSyncStart.Count > 0) {
                 log.Debug(endsOnSyncStart.Count + " Google Events end at midnight of the sync start date window.");
                 result = result.Except(endsOnSyncStart).ToList();
+            }
+
+            if (profile.SyncDirection.Id != Sync.Direction.OutlookToGoogle.Id) { //Sync direction means G->O will delete previously synced all-days
+                if (profile.ExcludeFree) {
+                    List<Event> availability = result.Where(ev => profile.ExcludeFree && ev.Transparency == "transparent").ToList();
+                    if (availability.Count > 0) {
+                        log.Debug(availability.Count + " Google Free items excluded.");
+                        result = result.Except(availability).ToList();
+                    }
+                }
+                if (profile.ExcludeAllDays) {
+                    List<Event> allDays = result.Where(ev => ev.AllDayEvent(true) && (profile.ExcludeFreeAllDays ? ev.Transparency == "transparent" : true)).ToList();
+                    if (allDays.Count > 0) {
+                        log.Debug(allDays.Count + " Google all-day items excluded.");
+                        result = result.Except(allDays).ToList();
+                    }
+                }
             }
 
             if (profile.ExcludeDeclinedInvites) {
@@ -519,8 +540,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                                 log.Error("API limit backoff was not successful. Save failed.");
                                 throw;
                             } else {
-                                log.Warn("API rate limit reached. Backing off " + backoff + "sec before retry.");
-                                System.Threading.Thread.Sleep(backoff * 1000);
+                                int backoffDelay = (int)Math.Pow(2, backoff);
+                                log.Warn("API rate limit reached. Backing off " + backoffDelay + "sec before retry.");
+                                System.Threading.Thread.Sleep(backoffDelay * 1000);
                             }
                             break;
                     }
@@ -733,6 +755,10 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 String currentStartTZ = ev.Start.TimeZone;
                 String currentEndTZ = ev.End.TimeZone;
                 ev = OutlookOgcs.Calendar.Instance.IOutlook.IANAtimezone_set(ev, ai);
+                if (ev.Recurrence != null && ev.Start.TimeZone != ev.End.TimeZone) {
+                    log.Warn("Outlook recurring series has a different start and end timezone, which Google does not allow. Setting both to the start timezone.");
+                    ev.End.TimeZone = ev.Start.TimeZone;
+                }
                 Sync.Engine.CompareAttribute("Start Timezone", Sync.Direction.OutlookToGoogle, currentStartTZ, ev.Start.TimeZone, sb, ref itemModified);
                 Sync.Engine.CompareAttribute("End Timezone", Sync.Direction.OutlookToGoogle, currentEndTZ, ev.End.TimeZone, sb, ref itemModified);
             }
@@ -921,8 +947,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                                 log.Error("API limit backoff was not successful. Save failed.");
                                 throw;
                             } else {
-                                log.Warn("API rate limit reached. Backing off " + backoff + "sec before retry.");
-                                System.Threading.Thread.Sleep(backoff * 1000);
+                                int backoffDelay = (int)Math.Pow(2, backoff);
+                                log.Warn("API rate limit reached. Backing off " + backoffDelay + "sec before retry.");
+                                System.Threading.Thread.Sleep(backoffDelay * 1000);
                             }
                             break;
                         case ApiException.justContinue:
@@ -1031,8 +1058,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                                 log.Error("API limit backoff was not successful. Save failed.");
                                 throw;
                             } else {
-                                log.Warn("API rate limit reached. Backing off " + backoff + "sec before retry.");
-                                System.Threading.Thread.Sleep(backoff * 1000);
+                                int backoffDelay = (int)Math.Pow(2, backoff);
+                                log.Warn("API rate limit reached. Backing off " + backoffDelay + "sec before retry.");
+                                System.Threading.Thread.Sleep(backoffDelay * 1000);
                             }
                             break;
                     }
@@ -1599,8 +1627,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                                 log.Error("API limit backoff was not successful. Save failed.");
                                 throw;
                             } else {
-                                log.Warn("API rate limit reached. Backing off " + backoff + "sec before retry.");
-                                System.Threading.Thread.Sleep(backoff * 1000);
+                                int backoffDelay = (int)Math.Pow(2, backoff);
+                                log.Warn("API rate limit reached. Backing off " + backoffDelay + "sec before retry.");
+                                System.Threading.Thread.Sleep(backoffDelay * 1000);
                             }
                             break;
                     }
@@ -2043,6 +2072,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                         return ApiException.freeAPIexhausted;
 
                     } else if (ex.Message.Contains("Rate Limit Exceeded")) {
+                        if (Settings.Instance.Subscribed > DateTime.Now.AddYears(-1))
+                            return ApiException.backoffThenRetry;
+                        
                         log.Warn("Google's free Calendar quota is being exceeded!");
                         Forms.Main.Instance.SyncNote(Forms.Main.SyncNotes.QuotaExceededInfo, null);
 

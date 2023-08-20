@@ -1051,7 +1051,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 if (OgcsMessageBox.Show("Delete " + eventSummary + "?", "Confirm Deletion From Google",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.No) {
                     doDelete = false;
-                    if (Sync.Engine.Calendar.Instance.Profile.SyncDirection.Id == Sync.Direction.Bidirectional.Id && CustomProperty.ExistsAny(ev)) {
+                    if (Sync.Engine.Calendar.Instance.Profile.SyncDirection.Id == Sync.Direction.Bidirectional.Id && CustomProperty.ExistAnyOutlookIDs(ev)) {
                         CustomProperty.RemoveOutlookIDs(ref ev);
                         UpdateCalendarEntry_save(ref ev);
                     }

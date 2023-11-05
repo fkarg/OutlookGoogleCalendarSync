@@ -398,6 +398,10 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 }
             } else ai.ReminderSet = profile.UseOutlookDefaultReminder;
 
+            if (!String.IsNullOrEmpty(ev.HangoutLink)) {
+                IOutlook.AddRtfBody(ref ai, GoogleOgcs.GMeet.RtfInfo.Replace("GMEETURL", ev.HangoutLink));
+            }
+
             //Add the Google event IDs into Outlook appointment.
             CustomProperty.AddGoogleIDs(ref ai, ev);
         }

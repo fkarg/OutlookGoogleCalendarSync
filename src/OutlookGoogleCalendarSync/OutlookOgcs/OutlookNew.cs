@@ -968,5 +968,13 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             return ai.EndTimeZone.ID;
         }
         #endregion
+
+        public void AddRtfBody(ref AppointmentItem ai, String RtfDocument) {
+            if (OutlookOgcs.Factory.OutlookVersionName != Factory.OutlookVersionNames.Outlook2007) {
+#if !DEVELOP_AGAINST_2007
+                ai.RTFBody = System.Text.Encoding.ASCII.GetBytes(RtfDocument);
+#endif
+            }
+        }
     }
 }

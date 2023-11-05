@@ -96,7 +96,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;DEVELOP_AGAINST_2007</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;DEVELOP_AGAINST_2010</DefineConstants>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <FileAlignment>4096</FileAlignment>
     <DebugType>Full</DebugType>
@@ -186,11 +186,6 @@
       <HintPath>lib\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="Microsoft.Office.Interop.Outlook_v14_2010">
-      <HintPath>lib\Microsoft.Office.Interop.Outlook_v14_2010.DLL</HintPath>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
-      <Aliases>O2010</Aliases>
-    </Reference>
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Mono.Cecil, Version=0.9.6.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <HintPath>lib\Squirrel\Mono.Cecil.dll</HintPath>
@@ -330,6 +325,7 @@
       <DependentUpon>TimezoneMap.cs</DependentUpon>
     </Compile>
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="GoogleOgcs\GMeet.cs" />
     <Compile Include="GoogleOgcs\ErrorReporting.cs" />
     <Compile Include="GoogleOgcs\CustomProperty.cs" />
     <Compile Include="GoogleOgcs\EventColour.cs" />

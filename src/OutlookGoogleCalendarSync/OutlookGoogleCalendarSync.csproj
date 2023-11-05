@@ -186,6 +186,11 @@
       <HintPath>lib\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Microsoft.Office.Interop.Outlook_v14_2010">
+      <HintPath>lib\Microsoft.Office.Interop.Outlook_v14_2010.DLL</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <Aliases>O2010</Aliases>
+    </Reference>
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Mono.Cecil, Version=0.9.6.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <HintPath>lib\Squirrel\Mono.Cecil.dll</HintPath>

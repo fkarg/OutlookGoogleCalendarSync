@@ -40,7 +40,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         String GetEndTimeZoneID(AppointmentItem ai);
 
         /// <summary>
-        /// Add an Rich Text Formatted body
+        /// Add a Rich Text Formatted body
         /// </summary>
         /// <param name="ai">AppointmentItem to update</param>
         /// <param name="RtfDocument">The RTF formatted document</param>

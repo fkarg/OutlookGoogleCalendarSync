@@ -399,7 +399,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             } else ai.ReminderSet = profile.UseOutlookDefaultReminder;
 
             if (!String.IsNullOrEmpty(ev.HangoutLink)) {
-                IOutlook.AddRtfBody(ref ai, GoogleOgcs.GMeet.RtfInfo.Replace("GMEETURL", ev.HangoutLink));
+                ai.GoogleMeet(ev.HangoutLink);
             }
 
             //Add the Google event IDs into Outlook appointment.
@@ -593,19 +593,24 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 ai.Subject = summaryObfuscated;
             }
             if (profile.AddDescription) {
+                String oGMeetUrl = CustomProperty.Get(ai, CustomProperty.MetadataId.gMeetUrl);
+
                 if (profile.SyncDirection.Id == Sync.Direction.GoogleToOutlook.Id || !profile.AddDescription_OnlyToGoogle) {
-                    String bodyObfuscated = Obfuscate.ApplyRegex(Obfuscate.Property.Description, ev.Description, ai.Body, Sync.Direction.OutlookToGoogle);
-                    if (bodyObfuscated.Length == 8 * 1024 && ai.Body.Length > 8 * 1024) {
+                    String aiBody = ai.Body?.Replace(GMeet.PlainInfo(oGMeetUrl), "");
+                    String bodyObfuscated = Obfuscate.ApplyRegex(Obfuscate.Property.Description, ev.Description, aiBody, Sync.Direction.GoogleToOutlook);
+                    if (bodyObfuscated.Length == 8 * 1024 && aiBody.Length > 8 * 1024) {
                         log.Warn("Event description has been truncated, so will not be synced to Outlook.");
                     } else {
-                        if (Sync.Engine.CompareAttribute("Description", Sync.Direction.OutlookToGoogle, bodyObfuscated, ai.Body, sb, ref itemModified))
+                        if (Sync.Engine.CompareAttribute("Description", Sync.Direction.GoogleToOutlook, bodyObfuscated, aiBody, sb, ref itemModified))
                             ai.Body = bodyObfuscated;
                     }
                 }
+                if (Sync.Engine.CompareAttribute("Google Meet", Sync.Direction.GoogleToOutlook, ev.HangoutLink, oGMeetUrl, sb, ref itemModified))
+                    ai.GoogleMeet(ev.HangoutLink);
             }
 
             if (profile.AddLocation) {
-                String locationObfuscated = Obfuscate.ApplyRegex(Obfuscate.Property.Description, ev.Location, ai.Location, Sync.Direction.OutlookToGoogle);
+                String locationObfuscated = Obfuscate.ApplyRegex(Obfuscate.Property.Description, ev.Location, ai.Location, Sync.Direction.GoogleToOutlook);
                 if (Sync.Engine.CompareAttribute("Location", Sync.Direction.GoogleToOutlook, locationObfuscated, ai.Location, sb, ref itemModified))
                     ai.Location = ev.Location;
             }

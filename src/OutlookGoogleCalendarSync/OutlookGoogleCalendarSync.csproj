@@ -325,7 +325,7 @@
       <DependentUpon>TimezoneMap.cs</DependentUpon>
     </Compile>
     <Compile Include="GlobalSuppressions.cs" />
-    <Compile Include="GoogleOgcs\GMeet.cs" />
+    <Compile Include="OutlookOgcs\GMeet.cs" />
     <Compile Include="GoogleOgcs\ErrorReporting.cs" />
     <Compile Include="GoogleOgcs\CustomProperty.cs" />
     <Compile Include="GoogleOgcs\EventColour.cs" />

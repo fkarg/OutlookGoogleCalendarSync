@@ -596,7 +596,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 String oGMeetUrl = CustomProperty.Get(ai, CustomProperty.MetadataId.gMeetUrl);
 
                 if (profile.SyncDirection.Id == Sync.Direction.GoogleToOutlook.Id || !profile.AddDescription_OnlyToGoogle) {
-                    String aiBody = ai.Body?.Replace(GMeet.PlainInfo(oGMeetUrl), "");
+                    String aiBody = ai.Body?.RemoveLineBreaks().Replace(GMeet.PlainInfo(oGMeetUrl).RemoveLineBreaks(), "");
                     String bodyObfuscated = Obfuscate.ApplyRegex(Obfuscate.Property.Description, ev.Description, aiBody, Sync.Direction.GoogleToOutlook);
                     if (bodyObfuscated.Length == 8 * 1024 && aiBody.Length > 8 * 1024) {
                         log.Warn("Event description has been truncated, so will not be synced to Outlook.");

@@ -12,12 +12,15 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
 
         private static String meetingIdToken = "GMEETURL";
         private static String plainInfo = "\r\nGoogle Meet joining information\r\nGMEETURL\r\nFirst time using Meet?  Learn more  <https://gsuite.google.com/learning-center/products/meet/get-started/>  \r\n\r\n";
+        
+        private static String rtfInfoHeader = @"{\rtf1\ansi\ansicpg1252\deff0\deflang2057";
+
         /// <summary>
         /// RTF document code for Google Meet details
         /// </summary>
         private static String rtfInfo =
         #region RTF document
-            @"{\rtf1\ansi\ansicpg1252\deff0\deflang2057{\fonttbl{\f0\fnil\fcharset0 Calibri;}{\f1\fswiss\fprq2\fcharset0 Calibri;}}
+            @"{\fonttbl{\f0\fnil\fcharset0 Calibri;}{\f1\fswiss\fprq2\fcharset0 Calibri;}}
 {\colortbl ;\red0\green0\blue255;\red5\green99\blue193;}
 {\*\generator Msftedit 5.41.21.2510;}\viewkind4\uc1\pard\lang9\f0\fs22{\pict\wmetafile8\picw2117\pich794\picwgoal1200\pichgoal450 
 010009000003480e00000000320e00000000050000000b0200000000050000000c021a03450832
@@ -221,35 +224,8 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
             return plainInfo.Replace(meetingIdToken, meetingUrl);
         }
 
-        public static String RtfInfo(String meetingUrl) {
-            return rtfInfo.Replace(meetingIdToken, meetingUrl);
-        }
-
-        public static String GetInfoBlock(AppointmentItem ai) {
-            try {
-                OlBodyFormat format = (OlBodyFormat)ai.GetType().InvokeMember("BodyFormat", System.Reflection.BindingFlags.GetProperty, null, ai, null);
-                if (format == OlBodyFormat.olFormatUnspecified) {
-                    log.Warn("Unspecified body format!");
-                    return "";
-
-                } else if (format == OlBodyFormat.olFormatHTML) {
-                    log.Warn("The body format is HTML; unsupported for GMeet code sync.");
-                    return "";
-
-                } else if (format == OlBodyFormat.olFormatPlain) {
-                    return ai.Body;
-
-                } else if (format == OlBodyFormat.olFormatRichText) {
-                    String bodyCode = Encoding.ASCII.GetString(ai.RTFBody as byte[]);
-                    return bodyCode;
-                }
-
-            } catch (System.Exception ex) {
-                OGCSexception.Analyse(ex);
-            }
-
-            //if (bodyIsHtml(ai.RTFBody)) 
-            return null;
+        public static String RtfInfo(String meetingUrl, Boolean includeHeader = true) {
+            return (includeHeader ? rtfInfoHeader : "") + rtfInfo.Replace(meetingIdToken, meetingUrl);
         }
 
         /// <summary>
@@ -258,37 +234,73 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
         /// <param name="ai">The appointment to update</param>
         /// <param name="gMeetUrl">The URL of the Meeting</param>
         public static void GoogleMeet(this Microsoft.Office.Interop.Outlook.AppointmentItem ai, String gMeetUrl) {
+            Regex rgxGmeetUrl = new Regex(@"https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}", RegexOptions.None);
+            OlBodyFormat bodyFormat = ai.BodyFormat();
+            log.Debug("Body format: " + bodyFormat.ToString());
+
             if (String.IsNullOrEmpty(gMeetUrl)) {
+                if (!rgxGmeetUrl.IsMatch(ai.Body)) {
+                    log.Debug("No GMeet info found to remove.");
+                    CustomProperty.Remove(ref ai, CustomProperty.MetadataId.gMeetUrl);
+                    return;
+                }
+                String oGMeetUrl = CustomProperty.Get(ai, CustomProperty.MetadataId.gMeetUrl);
+
+                if (!String.IsNullOrEmpty(ai.Body?.RemoveLineBreaks().Trim())) {
+                    String gMeetTemplate = PlainInfo("");
+                    if (rgxGmeetUrl.Replace(ai.Body, "").RemoveLineBreaks() == gMeetTemplate.RemoveLineBreaks()) {
+                        log.Debug("Description only contains GMeet info, which will be removed.");
+                        Calendar.Instance.IOutlook.AddRtfBody(ref ai, "");
+                        ai.Body = "";
+                    } else {
+                        if (bodyFormat == OlBodyFormat.olFormatPlain) {
+                            if (ai.Body.Replace(PlainInfo(oGMeetUrl), "").Length < ai.Body.Length) {
+                                log.Debug("Retaining non-GMeet content.");
+                                ai.Body = ai.Body.Replace(PlainInfo(oGMeetUrl), "");
+                            } else
+                                log.Debug("Not safe to remove GMeet info.");
+                        } else {
+                            //log.Debug("Marking GMeet URL as cancelled.");
+                            //GoogleMeet(ai, oGMeetUrl + " (cancelled)\r\n");
+                            log.Debug("Not safe to remove GMeet info.");
+                        }
+                    }
+                }
                 CustomProperty.Remove(ref ai, CustomProperty.MetadataId.gMeetUrl);
 
             } else {
                 CustomProperty.Add(ref ai, CustomProperty.MetadataId.gMeetUrl, gMeetUrl);
-                Regex rgx = new Regex(@"https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}", RegexOptions.None);
 
-                if (ai.BodyFormat() == OlBodyFormat.olFormatPlain) {
-                    if (String.IsNullOrEmpty(ai.Body?.Replace(PlainInfo(gMeetUrl + "ZZZ"), ""))) {
-                        log.Debug("Adding GMeet RTF body to Outlook");
-                        Calendar.Instance.IOutlook.AddRtfBody(ref ai, RtfInfo(gMeetUrl));
-                    } else {
-                        log.Debug("Updating GMeet plaintext body in Outlook");
-                        ai.Body = rgx.Replace(ai.Body, gMeetUrl);
-                    }
-                } else if (ai.BodyFormat() == OlBodyFormat.olFormatRichText) {
-                    if (String.IsNullOrEmpty(ai.Body)) {
-                        log.Debug("Adding GMeet RTF body to Outlook");
-                        Calendar.Instance.IOutlook.AddRtfBody(ref ai, RtfInfo(gMeetUrl));
-                    } else {
-                        log.Debug("Updating GMeet RTF body in Outlook");
-                        String newRtfBody = rgx.Replace(ai.RTFBodyAsString(), gMeetUrl);
-                        Calendar.Instance.IOutlook.AddRtfBody(ref ai, newRtfBody);
-                    }
+                if (String.IsNullOrEmpty(ai.Body?.RemoveLineBreaks().Trim())) {
+                    log.Debug("Adding GMeet RTF body to Outlook");
+                    Calendar.Instance.IOutlook.AddRtfBody(ref ai, RtfInfo(gMeetUrl));
                 } else {
-                    if (String.IsNullOrEmpty(ai.Body)) {
-                        log.Debug("Adding GMeet RTF body to Outlook");
-                        Calendar.Instance.IOutlook.AddRtfBody(ref ai, RtfInfo(gMeetUrl));
+                    if (bodyFormat == OlBodyFormat.olFormatPlain) {
+                        if (!rgxGmeetUrl.IsMatch(ai.Body)) {
+                            log.Debug("Appending GMeet plaintext body to Outlook");
+                            ai.Body += "\r\n" + PlainInfo(gMeetUrl);
+                        } else if (String.IsNullOrEmpty(ai.Body?.Replace(PlainInfo(gMeetUrl), "").RemoveLineBreaks().Trim())) {
+                            log.Debug("Replacing GMeet plaintext with RTF body in Outlook");
+                            Calendar.Instance.IOutlook.AddRtfBody(ref ai, RtfInfo(gMeetUrl));
+                        } else {
+                            log.Debug("Updating GMeet plaintext body in Outlook");
+                            ai.Body = rgxGmeetUrl.Replace(ai.Body, gMeetUrl);
+                        }
+                    } else if (bodyFormat == OlBodyFormat.olFormatRichText) {
+                        if (!rgxGmeetUrl.IsMatch(ai.Body)) {
+                            log.Debug("Appending GMeet RTF body to Outlook");
+                            String rtfBody = ai.RTFBodyAsString();
+                            int lastOccurrenceIdx = rtfBody.LastIndexOf('}');
+                            String newRtfBody = rtfBody.Substring(0, lastOccurrenceIdx) + @"\r\n\par\r\n" + RtfInfo(gMeetUrl, false) + rtfBody.Substring(lastOccurrenceIdx + 1);
+                            Calendar.Instance.IOutlook.AddRtfBody(ref ai, newRtfBody);
+                        } else {
+                            log.Debug("Updating GMeet RTF body in Outlook");
+                            String newRtfBody = rgxGmeetUrl.Replace(ai.RTFBodyAsString(), gMeetUrl);
+                            Calendar.Instance.IOutlook.AddRtfBody(ref ai, newRtfBody);
+                        }
                     } else {
-                        log.Warn(ai.BodyFormat().ToString() + " is not fully supported. Attempting update of pre-existing GMeet URL.");
-                        String newHtmlBody = rgx.Replace(ai.RTFBodyAsString(), gMeetUrl);
+                        log.Warn(bodyFormat.ToString() + " is not fully supported. Attempting update of pre-existing GMeet URL.");
+                        String newHtmlBody = rgxGmeetUrl.Replace(ai.RTFBodyAsString(), gMeetUrl);
                         Calendar.Instance.IOutlook.AddRtfBody(ref ai, newHtmlBody);
                     }
                 }

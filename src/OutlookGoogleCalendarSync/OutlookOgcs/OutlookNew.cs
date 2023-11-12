@@ -123,7 +123,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         calendarFolders.Remove(calendarFolders.ElementAt(fld).Key);
                     }
                     calendarFolders = new Dictionary<string, MAPIFolder>();
-                    Calendar.Categories.Dispose();
+                    Calendar.Categories?.Dispose();
                     explorerWatcher = (ExplorerWatcher)Calendar.ReleaseObject(explorerWatcher);
                 } catch (System.Exception ex) {
                     log.Debug(ex.Message);
@@ -972,7 +972,10 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         public void AddRtfBody(ref AppointmentItem ai, String RtfDocument) {
             if (OutlookOgcs.Factory.OutlookVersionName != Factory.OutlookVersionNames.Outlook2007) {
 #if !DEVELOP_AGAINST_2007
-                ai.RTFBody = System.Text.Encoding.ASCII.GetBytes(RtfDocument);
+                if (String.IsNullOrEmpty(RtfDocument))
+                    ai.RTFBody = " ";
+                else
+                    ai.RTFBody = System.Text.Encoding.ASCII.GetBytes(RtfDocument);
 #endif
             }
         }

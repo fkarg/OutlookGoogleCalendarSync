@@ -1,26 +1,56 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using log4net;
 using Microsoft.Office.Interop.Outlook;
+using System;
+using System.Linq;
 using System.Text.RegularExpressions;
-using log4net;
 
 namespace OutlookGoogleCalendarSync.OutlookOgcs {
-    static class GMeet {
+    public class GMeetLogo {
+        private static GMeetLogo instance;
+        private static readonly ILog log = LogManager.GetLogger(typeof(GMeetLogo));
+
+        public static GMeetLogo Instance {
+            get { return instance ??= new GMeetLogo(); }
+        }
+        public GMeetLogo() {
+            GMeetLogoBase64 = base64encode(Properties.Resources.gmeet_logo);
+        }
+
+        public String GMeetLogoBase64 { 
+            get; internal set; 
+        }
+
+        private String base64encode(System.Drawing.Image img) {
+            try {
+                byte[] imgBytes = null;
+                using (var stream = new System.IO.MemoryStream()) {
+                    img.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                    imgBytes = stream.ToArray();
+                }
+                return Convert.ToBase64String(imgBytes);
+
+            } catch (System.Exception ex) {
+                OGCSexception.Analyse("Could not load GMeet logo.", ex);
+                return "";
+            }
+        }
+    }
+
+    public static class GMeet {
         private static readonly ILog log = LogManager.GetLogger(typeof(GMeet));
 
-        private static String meetingIdToken = "GMEETURL";
+        private const String meetingIdToken = "GMEETURL";
+        private const String meetingLogoToken = "GMEETLOGO";
         private static String plainInfo = "\r\nGoogle Meet joining information\r\nGMEETURL\r\nFirst time using Meet?  Learn more  <https://gsuite.google.com/learning-center/products/meet/get-started/>  \r\n\r\n";
-        
-        private static String rtfInfoHeader = @"{\rtf1\ansi\ansicpg1252\deff0\deflang2057";
+        private static String plainHtmlInfo = "Google Meet joining informationGMEETURL <GMEETURL> First time using Meet? Learn more <https://gsuite.google.com/learning-center/products/meet/get-started/>    ";
 
         /// <summary>
         /// RTF document code for Google Meet details
         /// </summary>
-        private static String rtfInfo =
+        private static readonly String rtfHeader = @"{\rtf1\ansi\ansicpg1252\deff0\deflang2057{\fonttbl{\f0\fnil\fcharset0 Calibri;}{\f1\fswiss\fprq2\fcharset0 Calibri;}}";
+        private static readonly String rtfInfo =
         #region RTF document
-            @"{\fonttbl{\f0\fnil\fcharset0 Calibri;}{\f1\fswiss\fprq2\fcharset0 Calibri;}}
+            @"
 {\colortbl ;\red0\green0\blue255;\red5\green99\blue193;}
 {\*\generator Msftedit 5.41.21.2510;}\viewkind4\uc1\pard\lang9\f0\fs22{\pict\wmetafile8\picw2117\pich794\picwgoal1200\pichgoal450 
 010009000003480e00000000320e00000000050000000b0200000000050000000c021a03450832
@@ -220,12 +250,98 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
 }";
         #endregion
 
-        public static String PlainInfo(String meetingUrl) {
-            return plainInfo.Replace(meetingIdToken, meetingUrl);
+        /// <summary>
+        /// RTF HTML document code for Google Meet details
+        /// </summary>
+        private static readonly String rtfHtmlHeader = @"{\rtf1\ansi\ansicpg1252\fromhtml1 \fbidis \deff0{\fonttbl
+{\f0\fswiss\fcharset0 Arial;}
+{\f1\fmodern Courier New;}
+{\f2\fnil\fcharset2 Symbol;}
+{\f3\fmodern\fcharset0 Courier New;}}
+{\colortbl\red0\green0\blue0;\red5\green99\blue193;}
+\uc1\pard\plain\deftab360 \f0\fs24 ";
+        private static readonly String rtfHtmlInfo =
+        #region HTML document
+            @"
+{\*\htmltag19 <html xmlns:v=""urn:schemas-microsoft-com:vml"" xmlns:o=""urn:schemas-microsoft-com:office:office"" xmlns:w=""urn:schemas-microsoft-com:office:word"" xmlns:m=""http://schemas.microsoft.com/office/2004/12/omml"" xmlns=""http://www.w3.org/TR/REC-html40"">}
+{\*\htmltag34 <head>}
+{\*\htmltag241 <style>}
+{\*\htmltag241 <!--\par /* Font Definitions */\par @font-face\par \tab \{font-family:""Cambria Math"";\par \tab panose-1:2 4 5 3 5 4 6 3 2 4;\par \tab mso-font-charset:0;\par \tab mso-generic-font-family:roman;\par \tab mso-font-pitch:variable;\par \tab mso-font-signature:-536870145 1107305727 0 0 415 0;\}\par @font-face\par \tab \{font-family:Calibri;\par \tab panose-1:2 15 5 2 2 2 4 3 2 4;\par \tab mso-font-charset:0;\par \tab mso-generic-font-family:swiss;\par \tab mso-font-pitch:variable;\par \tab mso-font-signature:-536870145 1073786111 1 0 415 0;\}\par /* Style Definitions */\par p.MsoNormal, li.MsoNormal, div.MsoNormal\par \tab \{mso-style-unhide:no;\par \tab mso-style-qformat:yes;\par \tab mso-style-parent:"""";\par \tab margin:0cm;\par \tab margin-bottom:.0001pt;\par \tab mso-pagination:widow-orphan;\par \tab font-size:11.0pt;\par \tab font-family:""Calibri"",sans-serif;\par \tab mso-ascii-font-family:Calibri;\par \tab mso-fareast-font-family:Calibri;\par \tab mso-hansi-font-family:Calibri;\par \tab mso-bidi-font-family:""Times New Roman"";\par \tab mso-fareast-language:EN-US;\}\par a:link, span.MsoHyperlink\par \tab \{mso-style-noshow:yes;\par \tab mso-style-priority:99;\par \tab color:#0563C1;\par \tab text-decoration:underline;\par \tab text-underline:single;\}\par a:visited, span.MsoHyperlinkFollowed\par \tab \{mso-style-noshow:yes;\par \tab mso-style-priority:99;\par \tab color:#954F72;\par \tab text-decoration:underline;\par \tab text-underline:single;\}\par span.EmailStyle17\par \tab \{mso-style-type:personal-compose;\par \tab mso-style-noshow:yes;\par \tab mso-style-unhide:no;\par \tab font-family:""Calibri"",sans-serif;\par \tab mso-ascii-font-family:Calibri;\par \tab mso-hansi-font-family:Calibri;\par \tab mso-bidi-font-family:Calibri;\par \tab mso-ansi-language:EN;\par \tab mso-no-proof:yes;\}\par .MsoChpDefault\par \tab \{mso-style-type:export-only;\par \tab mso-default-props:yes;\par \tab font-family:""Calibri"",sans-serif;\par \tab mso-ascii-font-family:Calibri;\par \tab mso-fareast-font-family:Calibri;\par \tab mso-hansi-font-family:Calibri;\par \tab mso-bidi-font-family:""Times New Roman"";\par \tab mso-fareast-language:EN-US;\}\par @page WordSection1\par \tab \{size:612.0pt 792.0pt;\par \tab margin:72.0pt 72.0pt 72.0pt 72.0pt;\par \tab mso-header-margin:36.0pt;\par \tab mso-footer-margin:36.0pt;\par \tab mso-paper-source:0;\}\par div.WordSection1\par \tab \{page:WordSection1;\}\par -->}
+{\*\htmltag249 </style>}
+{\*\htmltag41 </head>}
+
+{\*\htmltag50 <body lang=EN-GB link=""#0563C1"" vlink=""#954F72"" style='tab-interval:36.0pt'>}
+{\*\htmltag96 <div class=WordSection1>}\htmlrtf {\htmlrtf0 
+{\*\htmltag64 <p class=MsoNormal style='mso-layout-grid-align:none;text-autospace:none'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag148 <span lang=EN style='mso-ascii-font-family:Calibri;mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri;mso-ansi-language:EN;mso-no-proof:yes'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag84 <img width=80 height=30 src=""data:image/png;base64,GMEETLOGO"">}
+{\*\htmltag156 </span>}\htmlrtf }\htmlrtf0 
+{\*\htmltag148 <span style='mso-ascii-font-family:Calibri;mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag156 </span>}\htmlrtf }\htmlrtf0 \htmlrtf\par}\htmlrtf0
+{\*\htmltag72 </p>}
+
+{\*\htmltag64 <p class=MsoNormal style='mso-layout-grid-align:none;text-autospace:none'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag84 <b>}\htmlrtf {\b \htmlrtf0 
+{\*\htmltag148 <span style='mso-ascii-font-family:Calibri;mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'>}\htmlrtf {\htmlrtf0 Google Meet joining information
+{\*\htmltag156 </span>}\htmlrtf }\htmlrtf0 
+{\*\htmltag92 </b>}\htmlrtf }\htmlrtf0 
+{\*\htmltag72 </p>}
+
+{\*\htmltag64 <p class=MsoNormal style='mso-layout-grid-align:none;text-autospace:none'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag148 <span style='mso-ascii-font-family:Calibri;mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag84 <a href=""GMEETURL"">}\htmlrtf {\field{\*\fldinst{HYPERLINK ""GMEETURL""}}{\fldrslt\cf1\ul \htmlrtf0 
+{\*\htmltag148 <span style='color:blue'>}\htmlrtf {\htmlrtf0 GMEETURL
+{\*\htmltag156 </span>}\htmlrtf }\htmlrtf0 \htmlrtf }\htmlrtf0 \htmlrtf }\htmlrtf0 
+{\*\htmltag92 </a>}
+{\*\htmltag156 </span>}\htmlrtf }\htmlrtf0 \htmlrtf\par}\htmlrtf0
+{\*\htmltag72 </p>}
+
+{\*\htmltag64 <p class=MsoNormal style='mso-layout-grid-align:none;text-autospace:none'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag148 <span style='mso-ascii-font-family:Calibri;mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'>}\htmlrtf {\htmlrtf0 First time using Meet?
+{\*\htmltag84 <a href=""https://gsuite.google.com/learning-center/products/meet/get-started/"">}\htmlrtf {\field{\*\fldinst{HYPERLINK ""https://gsuite.google.com/learning-center/products/meet/get-started/""}}{\fldrslt\cf1\ul \htmlrtf0 
+{\*\htmltag84 <b>}\htmlrtf {\b \htmlrtf0 
+{\*\htmltag148 <span style='color:#0563C1'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag84 &nbsp;}\htmlrtf \'a0\htmlrtf0 Learn more
+{\*\htmltag156 </span>}\htmlrtf }\htmlrtf0 
+{\*\htmltag92 </b>}\htmlrtf }\htmlrtf0 \htmlrtf }\htmlrtf0 \htmlrtf }\htmlrtf0 
+{\*\htmltag92 </a>}
+{\*\htmltag148 <span style='mso-spacerun:yes'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag84 &nbsp;}\htmlrtf \'a0\htmlrtf0  
+{\*\htmltag156 </span>}\htmlrtf }\htmlrtf0 
+{\*\htmltag156 </span>}\htmlrtf }\htmlrtf0 \htmlrtf\par}\htmlrtf0
+{\*\htmltag72 </p>}
+
+{\*\htmltag64 <p class=MsoNormal style='mso-layout-grid-align:none;text-autospace:none'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag148 <span style='mso-ascii-font-family:Calibri;mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'>}\htmlrtf {\htmlrtf0 
+{\*\htmltag244 <o:p>}
+{\*\htmltag84 &nbsp;}\htmlrtf \'a0\htmlrtf0 
+{\*\htmltag252 </o:p>}
+{\*\htmltag156 </span>}\htmlrtf }\htmlrtf0 \htmlrtf\par}\htmlrtf0
+{\*\htmltag72 </p>}
+
+{\*\htmltag104 </div>}\htmlrtf }\htmlrtf0 
+{\*\htmltag58 </body>}
+{\*\htmltag27 </html>}}";
+        #endregion
+
+        public static String PlainInfo(String meetingUrl, OlBodyFormat format) {
+            if (new OlBodyFormat[] { OlBodyFormat.olFormatPlain, OlBodyFormat.olFormatRichText }.Contains(format))
+                return plainInfo.Replace(meetingIdToken, meetingUrl);
+            else if (format == OlBodyFormat.olFormatHTML) {
+                String hydratedInfo = plainHtmlInfo.Replace(meetingIdToken, meetingUrl);
+                return hydratedInfo.Trim();
+            } else
+                return "";
         }
 
         public static String RtfInfo(String meetingUrl, Boolean includeHeader = true) {
-            return (includeHeader ? rtfInfoHeader : "") + rtfInfo.Replace(meetingIdToken, meetingUrl);
+            String hydratedInfo = rtfInfo.Replace(meetingIdToken, meetingUrl);
+            return (includeHeader ? rtfHeader : "") + hydratedInfo;
+        }
+        public static String RtfHtmlInfo(String meetingUrl, Boolean includeHeader = true) {
+            String hydratedInfo = rtfHtmlInfo.Replace(meetingIdToken, meetingUrl);
+            hydratedInfo = hydratedInfo.Replace(meetingLogoToken, GMeetLogo.Instance.GMeetLogoBase64);
+            return (includeHeader ? rtfHtmlHeader : "") + hydratedInfo;
         }
 
         /// <summary>
@@ -247,16 +363,16 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
                 String oGMeetUrl = CustomProperty.Get(ai, CustomProperty.MetadataId.gMeetUrl);
 
                 if (!String.IsNullOrEmpty(ai.Body?.RemoveLineBreaks().Trim())) {
-                    String gMeetTemplate = PlainInfo("");
+                    String gMeetTemplate = PlainInfo("", bodyFormat);
                     if (rgxGmeetUrl.Replace(ai.Body, "").RemoveLineBreaks() == gMeetTemplate.RemoveLineBreaks()) {
                         log.Debug("Description only contains GMeet info, which will be removed.");
                         Calendar.Instance.IOutlook.AddRtfBody(ref ai, "");
                         ai.Body = "";
                     } else {
                         if (bodyFormat == OlBodyFormat.olFormatPlain) {
-                            if (ai.Body.Replace(PlainInfo(oGMeetUrl), "").Length < ai.Body.Length) {
+                            if (ai.Body.Replace(PlainInfo(oGMeetUrl, bodyFormat), "").Length < ai.Body.Length) {
                                 log.Debug("Retaining non-GMeet content.");
-                                ai.Body = ai.Body.Replace(PlainInfo(oGMeetUrl), "");
+                                ai.Body = ai.Body.Replace(PlainInfo(oGMeetUrl, bodyFormat), "");
                             } else
                                 log.Debug("Not safe to remove GMeet info.");
                         } else {
@@ -272,14 +388,14 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
                 CustomProperty.Add(ref ai, CustomProperty.MetadataId.gMeetUrl, gMeetUrl);
 
                 if (String.IsNullOrEmpty(ai.Body?.RemoveLineBreaks().Trim())) {
-                    log.Debug("Adding GMeet RTF body to Outlook");
-                    Calendar.Instance.IOutlook.AddRtfBody(ref ai, RtfInfo(gMeetUrl));
+                    log.Debug("Adding GMeet RTF HTML body to Outlook");
+                    Calendar.Instance.IOutlook.AddRtfBody(ref ai, RtfHtmlInfo(gMeetUrl));
                 } else {
                     if (bodyFormat == OlBodyFormat.olFormatPlain) {
                         if (!rgxGmeetUrl.IsMatch(ai.Body)) {
                             log.Debug("Appending GMeet plaintext body to Outlook");
-                            ai.Body += "\r\n" + PlainInfo(gMeetUrl);
-                        } else if (String.IsNullOrEmpty(ai.Body?.Replace(PlainInfo(gMeetUrl), "").RemoveLineBreaks().Trim())) {
+                            ai.Body += "\r\n" + PlainInfo(gMeetUrl, bodyFormat);
+                        } else if (String.IsNullOrEmpty(ai.Body?.Replace(PlainInfo(gMeetUrl, bodyFormat), "").RemoveLineBreaks().Trim())) {
                             log.Debug("Replacing GMeet plaintext with RTF body in Outlook");
                             Calendar.Instance.IOutlook.AddRtfBody(ref ai, RtfInfo(gMeetUrl));
                         } else {
@@ -290,18 +406,30 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
                         if (!rgxGmeetUrl.IsMatch(ai.Body)) {
                             log.Debug("Appending GMeet RTF body to Outlook");
                             String rtfBody = ai.RTFBodyAsString();
-                            int lastOccurrenceIdx = rtfBody.LastIndexOf('}');
-                            String newRtfBody = rtfBody.Substring(0, lastOccurrenceIdx) + @"\r\n\par\r\n" + RtfInfo(gMeetUrl, false) + rtfBody.Substring(lastOccurrenceIdx + 1);
+                            int injectIdx = rtfBody.LastIndexOf('}');
+                            String newRtfBody = rtfBody.Substring(0, injectIdx) + @"\r\n\par\r\n" + RtfInfo(gMeetUrl, false) + rtfBody.Substring(injectIdx + 1);
                             Calendar.Instance.IOutlook.AddRtfBody(ref ai, newRtfBody);
                         } else {
                             log.Debug("Updating GMeet RTF body in Outlook");
                             String newRtfBody = rgxGmeetUrl.Replace(ai.RTFBodyAsString(), gMeetUrl);
                             Calendar.Instance.IOutlook.AddRtfBody(ref ai, newRtfBody);
                         }
+                    } else if (bodyFormat == OlBodyFormat.olFormatHTML) {
+                        if (!rgxGmeetUrl.IsMatch(ai.Body)) {
+                            log.Debug("Appending GMeet RTF HTML body to Outlook");
+                            String rtfHtmlBody = ai.RTFBodyAsString();
+                            int injectIdx = rtfHtmlBody.LastIndexOf(@"{\*\htmltag58 </BODY>}");
+                            String newRtfHtmlBody = rtfHtmlBody.Substring(0, injectIdx) + RtfHtmlInfo(gMeetUrl, false);
+                            Calendar.Instance.IOutlook.AddRtfBody(ref ai, newRtfHtmlBody);
+                        } else {
+                            log.Debug("Updating GMeet RTF HTML body in Outlook");
+                            String newRtfHtmlBody = rgxGmeetUrl.Replace(ai.RTFBodyAsString(), gMeetUrl);
+                            Calendar.Instance.IOutlook.AddRtfBody(ref ai, newRtfHtmlBody);
+                        }
                     } else {
                         log.Warn(bodyFormat.ToString() + " is not fully supported. Attempting update of pre-existing GMeet URL.");
-                        String newHtmlBody = rgxGmeetUrl.Replace(ai.RTFBodyAsString(), gMeetUrl);
-                        Calendar.Instance.IOutlook.AddRtfBody(ref ai, newHtmlBody);
+                        String newBody = rgxGmeetUrl.Replace(ai.RTFBodyAsString(), gMeetUrl);
+                        Calendar.Instance.IOutlook.AddRtfBody(ref ai, newBody);
                     }
                 }
             }

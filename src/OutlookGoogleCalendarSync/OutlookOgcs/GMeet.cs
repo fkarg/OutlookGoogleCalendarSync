@@ -349,41 +349,13 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
         /// </summary>
         /// <param name="ai">The appointment to update</param>
         /// <param name="gMeetUrl">The URL of the Meeting</param>
-        public static void GoogleMeet(this Microsoft.Office.Interop.Outlook.AppointmentItem ai, String gMeetUrl) {
+        public static void GoogleMeet(this AppointmentItem ai, String gMeetUrl) {
             Regex rgxGmeetUrl = new Regex(@"https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}", RegexOptions.None);
             OlBodyFormat bodyFormat = ai.BodyFormat();
             log.Debug("Body format: " + bodyFormat.ToString());
 
             if (String.IsNullOrEmpty(gMeetUrl)) {
-                if (!rgxGmeetUrl.IsMatch(ai.Body)) {
-                    log.Debug("No GMeet info found to remove.");
-                    CustomProperty.Remove(ref ai, CustomProperty.MetadataId.gMeetUrl);
-                    return;
-                }
-                String oGMeetUrl = CustomProperty.Get(ai, CustomProperty.MetadataId.gMeetUrl);
-
-                if (!String.IsNullOrEmpty(ai.Body?.RemoveLineBreaks().Trim())) {
-                    String gMeetTemplate = PlainInfo("", bodyFormat);
-                    if (rgxGmeetUrl.Replace(ai.Body, "").RemoveLineBreaks() == gMeetTemplate.RemoveLineBreaks()) {
-                        log.Debug("Description only contains GMeet info, which will be removed.");
-                        Calendar.Instance.IOutlook.AddRtfBody(ref ai, "");
-                        ai.Body = "";
-                    } else {
-                        if (bodyFormat == OlBodyFormat.olFormatPlain) {
-                            if (ai.Body.Replace(PlainInfo(oGMeetUrl, bodyFormat), "").Length < ai.Body.Length) {
-                                log.Debug("Retaining non-GMeet content.");
-                                ai.Body = ai.Body.Replace(PlainInfo(oGMeetUrl, bodyFormat), "");
-                            } else
-                                log.Debug("Not safe to remove GMeet info.");
-                        } else {
-                            //log.Debug("Marking GMeet URL as cancelled.");
-                            //GoogleMeet(ai, oGMeetUrl + " (cancelled)\r\n");
-                            log.Debug("Not safe to remove GMeet info.");
-                        }
-                    }
-                }
                 CustomProperty.Remove(ref ai, CustomProperty.MetadataId.gMeetUrl);
-
             } else {
                 CustomProperty.Add(ref ai, CustomProperty.MetadataId.gMeetUrl, gMeetUrl);
 

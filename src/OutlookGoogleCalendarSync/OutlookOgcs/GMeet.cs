@@ -344,13 +344,21 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
             return (includeHeader ? rtfHtmlHeader : "") + hydratedInfo;
         }
 
+        private static Regex rgxGmeetUrl = new Regex(@"https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}", RegexOptions.None);
+        public static Regex RgxGmeetUrl() {
+            return rgxGmeetUrl;
+        }
+
+        public static Boolean BodyHasGmeetUrl(this AppointmentItem ai) {
+            return rgxGmeetUrl.IsMatch(ai.Body);
+        }
+
         /// <summary>
         /// Add/update Google Meet information block to Outlook appointment body.
         /// </summary>
         /// <param name="ai">The appointment to update</param>
         /// <param name="gMeetUrl">The URL of the Meeting</param>
         public static void GoogleMeet(this AppointmentItem ai, String gMeetUrl) {
-            Regex rgxGmeetUrl = new Regex(@"https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}", RegexOptions.None);
             OlBodyFormat bodyFormat = ai.BodyFormat();
             log.Debug("Body format: " + bodyFormat.ToString());
 
@@ -364,7 +372,7 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
                     Calendar.Instance.IOutlook.AddRtfBody(ref ai, RtfHtmlInfo(gMeetUrl));
                 } else {
                     if (bodyFormat == OlBodyFormat.olFormatPlain) {
-                        if (!rgxGmeetUrl.IsMatch(ai.Body)) {
+                        if (!ai.BodyHasGmeetUrl()) {
                             log.Debug("Appending GMeet plaintext body to Outlook");
                             ai.Body += "\r\n" + PlainInfo(gMeetUrl, bodyFormat);
                         } else if (String.IsNullOrEmpty(ai.Body?.Replace(PlainInfo(gMeetUrl, bodyFormat), "").RemoveLineBreaks().Trim())) {
@@ -375,7 +383,7 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
                             ai.Body = rgxGmeetUrl.Replace(ai.Body, gMeetUrl);
                         }
                     } else if (bodyFormat == OlBodyFormat.olFormatRichText) {
-                        if (!rgxGmeetUrl.IsMatch(ai.Body)) {
+                        if (!ai.BodyHasGmeetUrl()) {
                             log.Debug("Appending GMeet RTF body to Outlook");
                             String rtfBody = ai.RTFBodyAsString();
                             int injectIdx = rtfBody.LastIndexOf('}');
@@ -387,7 +395,7 @@ First time using Meet?{\field{\*\fldinst{ HYPERLINK ""https://gsuite.google.com/
                             Calendar.Instance.IOutlook.AddRtfBody(ref ai, newRtfBody);
                         }
                     } else if (bodyFormat == OlBodyFormat.olFormatHTML) {
-                        if (!rgxGmeetUrl.IsMatch(ai.Body)) {
+                        if (!ai.BodyHasGmeetUrl()) {
                             log.Debug("Appending GMeet RTF HTML body to Outlook");
                             String rtfHtmlBody = ai.RTFBodyAsString();
                             int injectIdx = rtfHtmlBody.LastIndexOf(@"{\*\htmltag58 </BODY>}");

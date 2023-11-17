@@ -439,6 +439,12 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             return result;
         }
 
+        /// <summary>
+        /// Update just the attributes provided.
+        /// </summary>
+        /// <param name="ev">The Event with the subset of attribute values.</param>
+        /// <param name="patchId">The Event ID to patch. If not passed, the attribute must be included in the ev parameter object.</param>
+        /// <returns>The complete target Event after patch applied.</returns>
         private Event patchEvent(Event ev, String patchId = null) {
             int backoff = 0;
             while (backoff < BackoffLimit) {
@@ -660,25 +666,10 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
 
             if (OutlookOgcs.GMeet.BodyHasGmeetUrl(ai)) {
                 log.Info("Adding GMeet conference details.");
-                try {
-                    Match match = OutlookOgcs.GMeet.RgxGmeetUrl().Match(ai.Body);
-                    if (match?.Captures?.Count == 0) {
-                        log.Warn("Failed to extract the conference ID from the Appointment body.");
-                    } else {
-                        log.Debug("Conference ID: " + match.Value);
-                        Event patchEv = new Event();
-                        patchEv.ConferenceData = new ConferenceData() {
-                            ConferenceSolution = new ConferenceSolution() {
-                                Key = new ConferenceSolutionKey { Type = "hangoutsMeet" }
-                            },
-                            EntryPoints = new List<EntryPoint>() { new EntryPoint() { EntryPointType = "video", Uri = match.Value } }
-                        };
-                        createdEvent = patchEvent(patchEv, createdEvent.Id) ?? createdEvent;
-                        log.Fine("Conference data added.");
-                    }
-                } catch (System.Exception ex) {
-                    OGCSexception.Analyse("Could not add conference data to new Event.", ex);
-                }
+                String outlookGMeet = OutlookOgcs.GMeet.RgxGmeetUrl().Match(ai.Body).Value;
+                GMeet.GoogleMeet(createdEvent, outlookGMeet);
+                createdEvent = patchEvent(createdEvent) ?? createdEvent;
+                log.Fine("Conference data added.");
             }
 
             #region DOS ourself by triggering API limit
@@ -912,6 +903,17 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                     String bodyObfuscated = Obfuscate.ApplyRegex(Obfuscate.Property.Description, outlookBody, ev.Description, Sync.Direction.OutlookToGoogle);
                     if (Sync.Engine.CompareAttribute("Description", Sync.Direction.OutlookToGoogle, ev.Description, bodyObfuscated, sb, ref itemModified))
                         ev.Description = bodyObfuscated;
+
+                    String outlookGMeet = OutlookOgcs.GMeet.RgxGmeetUrl().Match(ai.Body)?.Value;
+                    if (Sync.Engine.CompareAttribute("Google Meet", Sync.Direction.OutlookToGoogle, ev.HangoutLink, outlookGMeet, sb, ref itemModified)) {
+                        try {
+                            GMeet.GoogleMeet(ev, outlookGMeet);
+                            ev = patchEvent(ev) ?? ev;
+                            log.Fine("Conference data change successfully saved.");
+                        } catch (System.Exception ex) {
+                            OGCSexception.Analyse("Could not update conference data in existing Event.", ex);
+                        }
+                    }
                 }
             }
 
@@ -2223,14 +2225,14 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                     } else if (ex.Message.Contains("Rate Limit Exceeded")) {
                         if (Settings.Instance.Subscribed > DateTime.Now.AddYears(-1))
                             return ApiException.backoffThenRetry;
-                        
+
                         log.Warn("Google's free Calendar quota is being exceeded!");
                         Forms.Main.Instance.SyncNote(Forms.Main.SyncNotes.QuotaExceededInfo, null);
 
                         //Delay next scheduled sync for an hour
                         if (profile.SyncInterval != 0) {
                             DateTime utcNow = DateTime.UtcNow;
-                            DateTime nextSync = utcNow.AddMinutes(60 + new Random().Next(1,10));
+                            DateTime nextSync = utcNow.AddMinutes(60 + new Random().Next(1, 10));
                             int delayMins = (int)(nextSync - utcNow).TotalMinutes;
                             profile.OgcsTimer.SetNextSync(delayMins, fromNow: true, calculateInterval: false);
                             Forms.Main.Instance.Console.Update("The next sync has been delayed by " + delayMins + " minutes to let free quota rebuild.", Console.Markup.warning);
@@ -2294,13 +2296,13 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             try {
                 SettingsStore.Calendar profile = Sync.Engine.Calendar.Instance.Profile;
                 if (!Settings.InstanceInitialiased() || (profile?.UseGoogleCalendar?.Id == null || string.IsNullOrEmpty(Settings.Instance.GaccountEmail)))
-                return null;
+                    return null;
 
                 return profile.UseGoogleCalendar.Id == Settings.Instance.GaccountEmail;
             } catch (System.Exception ex) {
                 OGCSexception.Analyse(ex);
                 return null;
-        }
+            }
         }
 
         /// <summary>

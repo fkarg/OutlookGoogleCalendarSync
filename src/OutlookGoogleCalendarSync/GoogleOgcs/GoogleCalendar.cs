@@ -664,7 +664,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 ai.Save();
             }
 
-            if (OutlookOgcs.GMeet.BodyHasGmeetUrl(ai)) {
+            if (profile.AddGMeet && OutlookOgcs.GMeet.BodyHasGmeetUrl(ai)) {
                 log.Info("Adding GMeet conference details.");
                 String outlookGMeet = OutlookOgcs.GMeet.RgxGmeetUrl().Match(ai.Body).Value;
                 GMeet.GoogleMeet(createdEvent, outlookGMeet);
@@ -904,14 +904,16 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                     if (Sync.Engine.CompareAttribute("Description", Sync.Direction.OutlookToGoogle, ev.Description, bodyObfuscated, sb, ref itemModified))
                         ev.Description = bodyObfuscated;
 
-                    String outlookGMeet = OutlookOgcs.GMeet.RgxGmeetUrl().Match(ai.Body)?.Value;
-                    if (Sync.Engine.CompareAttribute("Google Meet", Sync.Direction.OutlookToGoogle, ev.HangoutLink, outlookGMeet, sb, ref itemModified)) {
-                        try {
-                            GMeet.GoogleMeet(ev, outlookGMeet);
-                            ev = patchEvent(ev) ?? ev;
-                            log.Fine("Conference data change successfully saved.");
-                        } catch (System.Exception ex) {
-                            OGCSexception.Analyse("Could not update conference data in existing Event.", ex);
+                    if (profile.AddGMeet) {
+                        String outlookGMeet = OutlookOgcs.GMeet.RgxGmeetUrl().Match(ai.Body)?.Value;
+                        if (Sync.Engine.CompareAttribute("Google Meet", Sync.Direction.OutlookToGoogle, ev.HangoutLink, outlookGMeet, sb, ref itemModified)) {
+                            try {
+                                GMeet.GoogleMeet(ev, outlookGMeet);
+                                ev = patchEvent(ev) ?? ev;
+                                log.Fine("Conference data change successfully saved.");
+                            } catch (System.Exception ex) {
+                                OGCSexception.Analyse("Could not update conference data in existing Event.", ex);
+                            }
                         }
                     }
                 }

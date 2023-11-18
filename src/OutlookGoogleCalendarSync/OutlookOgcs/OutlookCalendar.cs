@@ -398,7 +398,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 }
             } else ai.ReminderSet = profile.UseOutlookDefaultReminder;
 
-            if (!String.IsNullOrEmpty(ev.HangoutLink)) {
+            if (profile.AddGMeet && !String.IsNullOrEmpty(ev.HangoutLink)) {
                 ai.GoogleMeet(ev.HangoutLink);
             }
 
@@ -610,11 +610,13 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         if (descriptionChanged = Sync.Engine.CompareAttribute("Description", Sync.Direction.GoogleToOutlook, bodyObfuscated, aiBody, sb, ref itemModified))
                             ai.Body = bodyObfuscated;
                     }
-                    if (Sync.Engine.CompareAttribute("Google Meet", Sync.Direction.GoogleToOutlook, ev.HangoutLink, oGMeetUrl, sb, ref itemModified)) {
-                        ai.GoogleMeet(ev.HangoutLink);
-                        if (String.IsNullOrEmpty(ev.HangoutLink) && !String.IsNullOrEmpty(oGMeetUrl) && !descriptionChanged)
-                            log.Debug("Removing GMeet information from body.");
+                    if (profile.AddGMeet) {
+                        if (Sync.Engine.CompareAttribute("Google Meet", Sync.Direction.GoogleToOutlook, ev.HangoutLink, oGMeetUrl, sb, ref itemModified)) {
+                            ai.GoogleMeet(ev.HangoutLink);
+                            if (String.IsNullOrEmpty(ev.HangoutLink) && !String.IsNullOrEmpty(oGMeetUrl) && !descriptionChanged)
+                                log.Debug("Removing GMeet information from body.");
                             ai.Body = bodyObfuscated;
+                        }
                     }
                 }
             }

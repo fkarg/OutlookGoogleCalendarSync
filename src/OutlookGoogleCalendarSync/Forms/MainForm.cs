@@ -1685,7 +1685,7 @@ namespace OutlookGoogleCalendarSync.Forms {
             ActiveCalendarProfile.ExcludeGoals = cbExcludeGoals.Checked;
         }
         private void cbGMeet_CheckedChanged(object sender, EventArgs e) {
-            if (!cbAddDescription.Checked) {
+            if (!this.LoadingProfileConfig && !cbAddDescription.Checked) {
                 cbAddGMeet.Checked = false;
             }
             ActiveCalendarProfile.AddGMeet = cbAddGMeet.Checked;

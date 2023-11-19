@@ -603,19 +603,29 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         aiBody = htmlDataTag.Replace(aiBody, "");
                         aiBody = aiBody.Replace(GMeet.PlainInfo(oGMeetUrl, ai.BodyFormat()).RemoveLineBreaks(), "").Trim();
                     }
-                    String bodyObfuscated = Obfuscate.ApplyRegex(Obfuscate.Property.Description, ev.Description, aiBody, Sync.Direction.GoogleToOutlook);
+                    String bodyObfuscated = Obfuscate.ApplyRegex(Obfuscate.Property.Description, Regex.Replace(ev.Description, @"[\u00A0]", "  "), aiBody, Sync.Direction.GoogleToOutlook);
                     if (bodyObfuscated.Length == 8 * 1024 && aiBody.Length > 8 * 1024) {
                         log.Warn("Event description has been truncated, so will not be synced to Outlook.");
                     } else {
-                        if (descriptionChanged = Sync.Engine.CompareAttribute("Description", Sync.Direction.GoogleToOutlook, bodyObfuscated, aiBody, sb, ref itemModified))
+                        String evBodyForCompare = bodyObfuscated;
+                        switch (ai.BodyFormat()) {
+                            case OlBodyFormat.olFormatHTML:
+                                evBodyForCompare = Regex.Replace(bodyObfuscated, "[\n]+", " "); break;
+                            case OlBodyFormat.olFormatRichText:
+                                evBodyForCompare = Regex.Replace(bodyObfuscated, "[\n]", ""); break;
+                            case OlBodyFormat.olFormatPlain:
+                                evBodyForCompare = Regex.Replace(bodyObfuscated, "[\n]", ""); break;
+                        }
+                        if (descriptionChanged = Sync.Engine.CompareAttribute("Description", Sync.Direction.GoogleToOutlook, evBodyForCompare, aiBody, sb, ref itemModified))
                             ai.Body = bodyObfuscated;
                     }
                     if (profile.AddGMeet) {
-                        if (Sync.Engine.CompareAttribute("Google Meet", Sync.Direction.GoogleToOutlook, ev.HangoutLink, oGMeetUrl, sb, ref itemModified)) {
+                        if (descriptionChanged || Sync.Engine.CompareAttribute("Google Meet", Sync.Direction.GoogleToOutlook, ev.HangoutLink, oGMeetUrl, sb, ref itemModified)) {
                             ai.GoogleMeet(ev.HangoutLink);
-                            if (String.IsNullOrEmpty(ev.HangoutLink) && !String.IsNullOrEmpty(oGMeetUrl) && !descriptionChanged)
+                            if (String.IsNullOrEmpty(ev.HangoutLink) && !String.IsNullOrEmpty(oGMeetUrl) && !descriptionChanged) {
                                 log.Debug("Removing GMeet information from body.");
-                            ai.Body = bodyObfuscated;
+                                ai.Body = bodyObfuscated;
+                            }
                         }
                     }
                 }

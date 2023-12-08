@@ -1734,7 +1734,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             try {
                 cal = request.Execute();
             } catch (Google.GoogleApiException ex) {
-                if (ex.InnerException is Newtonsoft.Json.JsonReaderException && ex.Message.StartsWith("<") && Settings.Instance.Proxy.Type != "None") {
+                if (ex.InnerException is Newtonsoft.Json.JsonReaderException && ex.InnerException.Message.Contains("Unexpected character encountered while parsing value: <") && Settings.Instance.Proxy.Type != "None") {
                     log.Warn("Call to CalendarList API endpoint failed. Retrying with trailing '/' in case of poorly configured proxy.");
                     //The URI ends with "@group.calendar.google.com", which seemingly can cause confusion - see issue #1745
                     System.Net.Http.HttpRequestMessage hrm = request.CreateRequest();

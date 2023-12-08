@@ -1730,7 +1730,18 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
         private void getCalendarSettings() {
             SettingsStore.Calendar profile = Settings.Profile.InPlay();
             CalendarListResource.GetRequest request = Service.CalendarList.Get(profile.UseGoogleCalendar.Id);
-            CalendarListEntry cal = request.Execute();
+            CalendarListEntry cal;
+            try {
+                cal = request.Execute();
+            } catch (Google.GoogleApiException ex) {
+                if (ex.InnerException is Newtonsoft.Json.JsonReaderException && ex.Message.StartsWith("<") && Settings.Instance.Proxy.Type != "None") {
+                    log.Warn("Call to CalendarList API endpoint failed. Retrying with trailing '/' in case of poorly configured proxy.");
+                    //The URI ends with "@group.calendar.google.com", which seemingly can cause confusion - see issue #1745
+                    System.Net.Http.HttpRequestMessage hrm = request.CreateRequest();
+                    hrm.RequestUri = new System.Uri(hrm.RequestUri + "/");
+                    cal = request.Execute();
+                } else throw;
+            }
             log.Info("Google calendar timezone: " + cal.TimeZone);
 
             if (!profile.AddReminders) return;

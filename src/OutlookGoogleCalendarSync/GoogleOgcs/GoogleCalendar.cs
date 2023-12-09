@@ -1737,9 +1737,16 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 if (ex.InnerException is Newtonsoft.Json.JsonReaderException && ex.InnerException.Message.Contains("Unexpected character encountered while parsing value: <") && Settings.Instance.Proxy.Type != "None") {
                     log.Warn("Call to CalendarList API endpoint failed. Retrying with trailing '/' in case of poorly configured proxy.");
                     //The URI ends with "@group.calendar.google.com", which seemingly can cause confusion - see issue #1745
-                    System.Net.Http.HttpRequestMessage hrm = request.CreateRequest();
-                    hrm.RequestUri = new System.Uri(hrm.RequestUri + "/");
-                    cal = request.Execute();
+                    try {
+                        System.Net.Http.HttpRequestMessage hrm = request.CreateRequest();
+                        hrm.RequestUri = new System.Uri(hrm.RequestUri + "/");
+                        System.Net.Http.HttpResponseMessage response = Service.HttpClient.SendAsync(hrm).Result;
+                        String responseBody = response.Content.ReadAsStringAsync().Result;
+                        cal = Newtonsoft.Json.JsonConvert.DeserializeObject<CalendarListEntry>(responseBody);
+                    } catch (System.Exception ex2) {
+                        OGCSexception.Analyse("Failed retrieving calendarList via HttpRequestMessage.", ex2);
+                        throw;
+                    }
                 } else throw;
             }
             log.Info("Google calendar timezone: " + cal.TimeZone);
